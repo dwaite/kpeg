@@ -6,13 +6,15 @@ require 'kpeg/format_parser'
 require 'kpeg/grammar_renderer'
 
 require 'optparse'
+require 'ruby-debug'
 
+Debugger.start do
 options = {}
-OptionParser.new do |o|
-  o.banner = "Usage: kpeg [options]"
+option_parser = OptionParser.new do |o|
+  o.banner = "Usage: kpeg [options] <filename>"
 
-  o.on("-t", "--test", "Syntax check the file only") do |v|
-    options[:test] = v
+  o.on("-t", "--test", "Syntax check the file only") do
+    options[:test] = true
   end
 
   o.on("--reformat", "Reformat your grammar and write it back out") do
@@ -27,34 +29,41 @@ OptionParser.new do |o|
     options[:name] = v
   end
 
-  o.on("-f", "--force", "Overwrite the output if it exists") do |v|
-    options[:force] = v
+  o.on("-f", "--force", "Overwrite the output if it exists") do 
+    options[:force] = true
   end
 
-  o.on("-s", "--stand-alone", "Write the parser to run standalone") do |v|
-    options[:standalone] = v
+  o.on("-s", "--stand-alone", "Write the parser to run standalone") do
+    options[:standalone] = true
   end
 
-  o.on("-v", "--[no-]verbose", "Run verbosely") do |v|
-    options[:verbose] = v
+  o.on("-v", "--[no-]verbose", "Run verbosely") do
+    options[:verbose] = true
   end
 
-  o.on("-d", "--debug", "Debug parsing the file") do |v|
-    options[:debug] = v
+  o.on("-d", "--debug", "Debug parsing the file") do
+    options[:debug] = true
   end
-end.parse!
+end
+
+option_parser.parse!
 
 file = ARGV.shift
 
-unless File.exists?(file)
-  puts "File '#{file}' does not exist"
+if !file
+  $stderr.puts "Filename must be specified"
+  $stderr.puts option_parser
+  exit 1
+elsif !File.exists?(file)
+  $stderr.puts "File '#{file}' does not exist"
+  $stderr.puts option_parser
   exit 1
 end
 
 parser = KPeg::FormatParser.new File.read(file), true
 
 unless m = parser.parse
-  puts "Syntax error in grammar #{file}"
+  $stderr.puts "Syntax error in grammar #{file}"
   parser.show_error
   exit 1
 end
@@ -63,13 +72,13 @@ grammar = parser.grammar
 
 if options[:reformat]
   if !options[:output]
-    puts "Please specify -o for where to write the new grammar"
+    $stderr.puts "Please specify -o for where to write the new grammar"
     exit 1
   end
 
   output = options[:output]
   if File.exists?(output) and !options[:force]
-    puts "Output '#{output}' already exists, not overwriting (use -f)"
+    $stderr.puts "Output '#{output}' already exists, not overwriting (use -f)"
     exit 1
   end
 
@@ -86,7 +95,7 @@ end
 
 if !options[:test] and !options[:name]
   unless name = grammar.variables["name"]
-    puts "Please specify -n"
+    $stderr.puts "Please specify -n"
     exit 1
   end
 else
@@ -124,3 +133,4 @@ File.open new_path, "w" do |f|
 end
 
 puts "Wrote #{name} to #{new_path}"
+end
